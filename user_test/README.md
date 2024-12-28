@@ -1,6 +1,6 @@
 ## 项目说明
 
-本项目基于 [OV-Watch]([原项目链接](https://github.com/No-Chicken/OV-Watch/tree/main/lv_sim_vscode_win))，遵循 [原项目开源协议] 进行开发。在原项目的基础上，我添加了 **菜单拖拽换位功能**，以增强用户体验。
+本项目基于 [No-Chicken/OV-Watch](https://github.com/No-Chicken/OV-Watch/tree/main/lv_sim_vscode_win)，遵循 [原项目开源协议] 进行开发。在原项目的基础上，我添加了 **菜单拖拽换位功能**，以增强用户体验。
 
 感谢原项目作者的开源贡献！
 ## 新增功能：菜单拖拽换位
