@@ -1,6 +1,6 @@
 ## 项目说明
 
-本项目基于 [No-Chicken/OV-Watch](https://github.com/No-Chicken/OV-Watch/tree/main/lv_sim_vscode_win)，遵循 [原项目开源协议] 进行开发。在原项目的基础上，我添加了 **菜单拖拽换位功能**，以增强用户体验。
+本项目基于 [No-Chicken/OV-Watch](https://github.com/No-Chicken/OV-Watch/tree/main/lv_sim_vscode_win)。在原项目的基础上，我添加了 **菜单拖拽换位功能**，以增强用户体验。
 
 感谢原项目作者的开源贡献！
 ## 新增功能：菜单拖拽换位
@@ -26,3 +26,6 @@ static void drag_event_handler_(lv_event_t *e)
 {
     // 详细代码见项目源码
 }
+## 贡献与反馈
+
+欢迎提交 Issue 或 Pull Request 来改进本项目。如有任何问题或建议，请通过 [GitHub Issues](项目 Issues 链接) 反馈。
