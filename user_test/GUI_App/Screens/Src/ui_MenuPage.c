@@ -17,85 +17,28 @@
 #include "../Inc/ui_AboutPage.h"
 #include <stdio.h>
 #include <stdlib.h>
-
-#define SWAP(a, b)          \
-    do                      \
-    {                       \
-        lv_obj_t *temp = a; \
-        a = b;              \
-        b = temp;           \
-    } while (0)
-
+#define MENU_ITEMS_COUNT 12
 ///////////////////// Page Manager //////////////////
 Page_t Page_Menu = {ui_MenuPage_screen_init, ui_MenuPage_screen_deinit, &ui_MenuPage};
 
 ///////////////////// VARIABLES ////////////////////
 // menu page
 lv_obj_t *ui_MenuPage;
-
-lv_obj_t *ui_MenuCalPanel;
-lv_obj_t *ui_MenuCalButton;
-lv_obj_t *ui_MenuCalicon;
-lv_obj_t *ui_MenuCalLabel;
-
-lv_obj_t *ui_MenuComPanel;
-lv_obj_t *ui_MenuComButton;
-lv_obj_t *ui_MenuComicon;
-lv_obj_t *ui_MenuComLabel;
-
-lv_obj_t *ui_MenuTimPanel;
-lv_obj_t *ui_MenuTimButton;
-lv_obj_t *ui_MenuTimicon;
-lv_obj_t *ui_MenuTimLabel;
-
-lv_obj_t *ui_MenuCardPanel;
-lv_obj_t *ui_MenuCardButton;
-lv_obj_t *ui_MenuCardicon;
-lv_obj_t *ui_MenuCardLabel;
-
-lv_obj_t *ui_MenuSprPanel;
-lv_obj_t *ui_MenuSprButton;
-lv_obj_t *ui_MenuSpricon;
-lv_obj_t *ui_MenuSprLabel;
-
-lv_obj_t *ui_MenuHRPanel;
-lv_obj_t *ui_MenuHRButton;
-lv_obj_t *ui_MenuHRicon;
-lv_obj_t *ui_MenuHRLabel;
-
-lv_obj_t *ui_MenuO2Panel;
-lv_obj_t *ui_MenuO2Button;
-lv_obj_t *ui_MenuO2icon;
-lv_obj_t *ui_MenuO2Label;
-
-lv_obj_t *ui_MenuEnvPanel;
-lv_obj_t *ui_MenuEnvButton;
-lv_obj_t *ui_MenuEnvicon;
-lv_obj_t *ui_MenuEnvLabel;
-
-lv_obj_t *ui_MenuCPPanel;
-lv_obj_t *ui_MenuCPButton;
-lv_obj_t *ui_MenuCPicon;
-lv_obj_t *ui_MenuCPLabel;
-
-lv_obj_t *ui_MenuGamePanel;
-lv_obj_t *ui_MenuGameButton;
-lv_obj_t *ui_MenuGameicon;
-lv_obj_t *ui_MenuGameLabel;
-
-lv_obj_t *ui_MenuSetPanel;
-lv_obj_t *ui_MenuSetButton;
-lv_obj_t *ui_MenuSeticon;
-lv_obj_t *ui_MenuSetLabel;
-
-lv_obj_t *ui_MenuAbPanel;
-lv_obj_t *ui_MenuAbButton;
-lv_obj_t *ui_MenuAbicon;
-lv_obj_t *ui_MenuAbLabel;
-
 // scroll y
 int16_t ui_MenuScrollY = 0;
-
+int16_t src_idx = -1;
+MenuItem drag_obj;
+void static animate_menu_item(lv_obj_t *obj, lv_coord_t start_y, lv_coord_t end_y)
+{
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, obj);
+    lv_anim_set_values(&a, start_y, end_y);
+    lv_anim_set_time(&a, 300); // 300ms动画时长
+    lv_anim_set_exec_cb(&a, (lv_anim_exec_xcb_t)lv_obj_set_y);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+    lv_anim_start(&a);
+}
 ///////////////////// FUNCTIONS ////////////////////
 /**
  * 处理菜单页面的用户界面事件。
@@ -199,7 +142,6 @@ static void drag_event_handler_(lv_event_t *e)
 
     static struct
     {
-        lv_obj_t *last_swap_obj;
         lv_obj_t *current_hover_obj;
         lv_coord_t original_y;
         uint32_t hover_start_time;
@@ -243,6 +185,14 @@ static void drag_event_handler_(lv_event_t *e)
                 lv_obj_set_size(child, ITEM_WIDTH * SHRINK_FACTOR, ITEM_HEIGHT * SHRINK_FACTOR);
             }
         }
+        for (uint32_t i = 0; i < child_count; i++)
+        {
+            if (menu_items[i].panel == obj)
+            {
+                src_idx = i;
+                drag_obj = menu_items[i];
+            }
+        }
     }
     break;
 
@@ -254,10 +204,6 @@ static void drag_event_handler_(lv_event_t *e)
         lv_indev_t *indev = lv_indev_get_act();
         lv_point_t vect;
         lv_indev_get_vect(indev, &vect);
-
-        if (vect.y == 0)
-            break;
-
         // 更新位置
         lv_coord_t new_y = lv_obj_get_y(obj) + vect.y;
         lv_coord_t parent_y = lv_obj_get_scroll_y(ui_MenuPage);
@@ -278,13 +224,13 @@ static void drag_event_handler_(lv_event_t *e)
                 lv_obj_set_y(obj, new_y);
             }
         }
-        if (new_y > parent_y + SCREEN_HEIGHT-70 - SCROLL_THRESHOLD)
+        if (new_y > parent_y + SCREEN_HEIGHT - 70 - SCROLL_THRESHOLD)
         {
             // 保存当前相对位置
             lv_coord_t rel_y = new_y - parent_y;
 
             // 执行滚动
-            if (parent_y+10 <= lv_obj_get_child_cnt(ui_MenuPage) * 70)
+            if (parent_y + 10 <= (lv_obj_get_child_cnt(ui_MenuPage) - 4) * 70)
             {
                 lv_obj_scroll_by(ui_MenuPage, 0, -10, LV_ANIM_OFF);
 
@@ -303,12 +249,17 @@ static void drag_event_handler_(lv_event_t *e)
         {
             lv_obj_t *child = lv_obj_get_child(ui_MenuPage, i);
             if (child == obj)
-                continue;
-            int child_center = lv_obj_get_y(child) + (ITEM_HEIGHT / 2);
-            if (abs(obj_center - child_center) < SWAP_THRESHOLD)
             {
-                hover_candidate = child;
-                break;
+                continue;
+            }
+            else
+            {
+                int child_center = lv_obj_get_y(child) + (ITEM_HEIGHT / 2);
+                if (abs(obj_center - child_center) < SWAP_THRESHOLD)
+                {
+                    hover_candidate = child;
+                    break;
+                }
             }
         }
 
@@ -324,20 +275,52 @@ static void drag_event_handler_(lv_event_t *e)
         {
             if (lv_tick_get() - drag_state.hover_start_time >= HOVER_DELAY_MS)
             {
-                // 执行交换动画
-                lv_coord_t target_y = lv_obj_get_y(hover_candidate);
 
-                lv_anim_t a;
-                lv_anim_init(&a);
-                lv_anim_set_var(&a, hover_candidate);
-                lv_anim_set_exec_cb(&a, (lv_anim_exec_xcb_t)lv_obj_set_y);
-                lv_anim_set_values(&a, target_y, drag_state.original_y);
-                lv_anim_set_time(&a, 200);
-                lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
-                lv_anim_start(&a);
+                int16_t dst_idx = -1;
 
-                drag_state.original_y = target_y;
-                drag_state.last_swap_obj = hover_candidate;
+                // 找到源对象和目标对象的索引
+                for (int i = 0; i < MENU_ITEMS_COUNT; i++)
+                {
+                    if (menu_items[i].panel == hover_candidate)
+                    {
+                        dst_idx = i;
+                    }
+                }
+
+                // 确保找到了两个有效的索引
+                if (src_idx == -1 || dst_idx == -1)
+                {
+                    return;
+                }
+
+                //  = menu_items[src_idx];
+
+                // 向上移动
+                if (src_idx > dst_idx)
+                {
+
+                    for (int i = src_idx; i > dst_idx; i--)
+                    {
+                        menu_items[i] = menu_items[i-1];
+                        animate_menu_item(menu_items[i-1].panel, lv_obj_get_y(menu_items[i-1].panel), lv_obj_get_y(menu_items[i-1].panel) + ITEM_HEIGHT);
+
+                    }
+                    menu_items[dst_idx] = drag_obj;
+                    src_idx = dst_idx;
+                }
+                // 向下移动
+                else if (src_idx < dst_idx)
+                {
+
+                     for (int i = src_idx; i < dst_idx; i++)
+                    {
+                        menu_items[i] = menu_items[i+1];
+                        animate_menu_item(menu_items[i+1].panel, lv_obj_get_y(menu_items[i+1].panel), lv_obj_get_y(menu_items[i+1].panel) - ITEM_HEIGHT);
+                    }
+                    menu_items[dst_idx] = drag_obj;
+                    src_idx = dst_idx;
+                }
+
                 drag_state.hover_start_time = lv_tick_get();
             }
         }
@@ -350,47 +333,30 @@ static void drag_event_handler_(lv_event_t *e)
         lv_obj_clear_state(obj, LV_STATE_PRESSED);
         lv_obj_add_flag(ui_MenuPage, LV_OBJ_FLAG_SCROLLABLE);
 
-        // 恢复所有对象大小并重新排列
-        uint32_t child_count = lv_obj_get_child_cnt(ui_MenuPage);
-        lv_obj_t **sorted_children = malloc(sizeof(lv_obj_t *) * child_count);
-
         // 恢复大小并收集对象
-        for (uint32_t i = 0; i < child_count; i++)
+        for (uint32_t i = 0; i < MENU_ITEMS_COUNT; i++)
         {
-            sorted_children[i] = lv_obj_get_child(ui_MenuPage, i);
-            lv_obj_set_size(sorted_children[i], ITEM_WIDTH, ITEM_HEIGHT);
-        }
-
-        // 按Y坐标排序
-        for (uint32_t i = 0; i < child_count - 1; i++)
-        {
-            for (uint32_t j = 0; j < child_count - i - 1; j++)
+            if (menu_items[i].panel != NULL)
             {
-                if (lv_obj_get_y(sorted_children[j]) > lv_obj_get_y(sorted_children[j + 1]))
-                {
-                    SWAP(sorted_children[j], sorted_children[j + 1]);
-                }
+                lv_obj_set_size(menu_items[i].panel, ITEM_WIDTH, ITEM_HEIGHT);
             }
         }
-
-        // 设置最终位置
-        for (uint32_t i = 0; i < child_count; i++)
+        for (uint32_t i = 0; i < MENU_ITEMS_COUNT; i++)
         {
-            lv_anim_t a;
-            lv_anim_init(&a);
-            lv_anim_set_var(&a, sorted_children[i]);
-            lv_anim_set_exec_cb(&a, (lv_anim_exec_xcb_t)lv_obj_set_y);
-            lv_anim_set_values(&a, lv_obj_get_y(sorted_children[i]), i * ITEM_HEIGHT);
-            lv_anim_set_time(&a, 300);
-            lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
-            lv_anim_start(&a);
-
-            lv_obj_set_x(sorted_children[i], 0);
-            lv_obj_move_to_index(sorted_children[i], i);
+            if (menu_items[i].panel != NULL)
+            {
+                lv_anim_t a;
+                lv_anim_init(&a);
+                lv_anim_set_var(&a, menu_items[i].panel);
+                lv_anim_set_exec_cb(&a, (lv_anim_exec_xcb_t)lv_obj_set_y);
+                lv_anim_set_values(&a, lv_obj_get_y(menu_items[i].panel), i * ITEM_HEIGHT);
+                lv_anim_set_time(&a, 300);
+                lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+                lv_anim_start(&a);
+                lv_obj_set_x(menu_items[i].panel, 0);
+                lv_obj_move_to_index(menu_items[i].panel, i);
+            }
         }
-
-        free(sorted_children);
-
         // 重置状态
         memset(&drag_state, 0, sizeof(drag_state));
     }
@@ -512,506 +478,136 @@ void ui_event_MenuAbPanel(lv_event_t *e)
     }
 }
 
+// 初始化菜单项
+void init_menu_item(MenuItem *item, lv_obj_t *parent, int y_offset)
+{
+    // 创建面板
+    item->panel = lv_obj_create(parent);
+    lv_obj_set_size(item->panel, 240, 70);
+    lv_obj_set_pos(item->panel, 0, y_offset);
+    lv_obj_clear_flag(item->panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(item->panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(item->panel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(item->panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_color(item->panel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_border_opa(item->panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(item->panel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(item->panel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
+
+    // 为面板添加长按事件回调
+    lv_obj_add_event_cb(item->panel, drag_event_handler_, LV_EVENT_LONG_PRESSED, NULL);
+    lv_obj_add_event_cb(item->panel, drag_event_handler_, LV_EVENT_PRESSING, NULL);
+    lv_obj_add_event_cb(item->panel, drag_event_handler_, LV_EVENT_RELEASED, NULL);
+
+    // 创建按钮
+    item->button = lv_btn_create(item->panel);
+    lv_obj_set_size(item->button, 40, 40);
+    lv_obj_set_align(item->button, LV_ALIGN_LEFT_MID);
+    lv_obj_add_flag(item->button, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+    lv_obj_clear_flag(item->button, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_radius(item->button, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(item->button, item->button_color, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(item->button, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    // 创建图标
+    item->icon = lv_label_create(item->button);
+    lv_obj_set_size(item->icon, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_align(item->icon, LV_ALIGN_CENTER);
+    lv_label_set_text(item->icon, item->icon_text);
+    lv_obj_set_style_text_font(item->icon, item->icon_font, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    // 创建标签
+    item->label = lv_label_create(item->panel);
+    lv_obj_set_size(item->label, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_pos(item->label, 60, 0);
+    lv_obj_set_align(item->label, LV_ALIGN_LEFT_MID);
+    lv_label_set_text(item->label, item->label_text);
+    lv_obj_set_style_text_font(item->label, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    // 添加点击事件回调
+    if (item->event_cb)
+    {
+        lv_obj_add_event_cb(item->panel, item->event_cb, LV_EVENT_SHORT_CLICKED, NULL);
+    }
+}
+
+// 定义菜单项数组
+MenuItem menu_items[] = {
+    {.button_color = {0xFF, 0x80, 0x80}, // 直接使用RGB值
+     .icon_text = "",
+     .label_text = "日 历",
+     .icon_font = &ui_font_iconfont30,
+     .event_cb = ui_event_MenuCalPanel},
+    {.button_color = {0xC8, 0x64, 0x00},
+     .icon_text = "",
+     .label_text = "计 算 器",
+     .icon_font = &ui_font_iconfont28,
+     .event_cb = ui_event_MenuComPanel},
+    {.button_color = {0xDC, 0x80, 0xE6},
+     .icon_text = "",
+     .label_text = "秒 表",
+     .icon_font = &ui_font_iconfont34,
+     .event_cb = ui_event_MenuTimPanel},
+    {.button_color = {0x80, 0x64, 0x1E},
+     .icon_text = "",
+     .label_text = "卡 包",
+     .icon_font = &ui_font_iconfont32,
+     .event_cb = ui_event_MenuCardPanel},
+    {.button_color = {0x00, 0x96, 0x80},
+     .icon_text = "",
+     .label_text = "运 动",
+     .icon_font = &ui_font_iconfont30,
+     .event_cb = ui_event_MenuSprPanel},
+    {.button_color = {0xC8, 0x00, 0x00},
+     .icon_text = "",
+     .label_text = "心 率",
+     .icon_font = &ui_font_iconfont34,
+     .event_cb = ui_event_MenuHRPanel},
+    {.button_color = {0x00, 0x80, 0xFF},
+     .icon_text = "",
+     .label_text = "血 氧",
+     .icon_font = &ui_font_iconfont34,
+     .event_cb = ui_event_MenuO2Panel},
+    {.button_color = {0x00, 0x96, 0x32},
+     .icon_text = "",
+     .label_text = "环 境",
+     .icon_font = &ui_font_iconfont34,
+     .event_cb = ui_event_MenuEnvPanel},
+    {.button_color = {0x80, 0x00, 0x80},
+     .icon_text = "",
+     .label_text = "指 南 针",
+     .icon_font = &ui_font_iconfont34,
+     .event_cb = ui_event_MenuCPPanel},
+    {.button_color = {0xC0, 0x70, 0x10},
+     .icon_text = "",
+     .label_text = "游 戏",
+     .icon_font = &ui_font_iconfont30,
+     .event_cb = ui_event_MenuGamePanel},
+    {.button_color = {0x80, 0x80, 0x80},
+     .icon_text = "",
+     .label_text = "设 置",
+     .icon_font = &ui_font_iconfont30,
+     .event_cb = ui_event_MenuSetPanel},
+    {.button_color = {0x64, 0x64, 0x64},
+     .icon_text = "",
+     .label_text = "关 于",
+     .icon_font = &ui_font_iconfont30,
+     .event_cb = ui_event_MenuAbPanel}
+     };
+
 ///////////////////// SCREEN init ////////////////////
 void ui_MenuPage_screen_init(void)
 {
-
     ui_MenuPage = lv_obj_create(NULL);
     // lv_obj_clear_flag(ui_MenuPage, LV_OBJ_FLAG_GESTURE_BUBBLE);
     lv_obj_add_flag(ui_MenuPage, LV_OBJ_FLAG_EVENT_BUBBLE);
     // lv_scr_load_anim(ui_MenuPage, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
 
-    ui_MenuCalPanel = lv_obj_create(ui_MenuPage);
-    lv_obj_set_width(ui_MenuCalPanel, 240);
-    lv_obj_set_height(ui_MenuCalPanel, 70);
-    lv_obj_set_align(ui_MenuCalPanel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_MenuCalPanel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuCalPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuCalPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuCalPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_MenuCalPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_MenuCalPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuCalPanel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(ui_MenuCalPanel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
-
-    ui_MenuCalButton = lv_btn_create(ui_MenuCalPanel);
-    lv_obj_set_width(ui_MenuCalButton, 40);
-    lv_obj_set_height(ui_MenuCalButton, 40);
-    lv_obj_set_align(ui_MenuCalButton, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_MenuCalButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);                      /// Flags
-    lv_obj_clear_flag(ui_MenuCalButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuCalButton, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuCalButton, lv_color_hex(0xFF8080), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuCalButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuCalicon = lv_label_create(ui_MenuCalButton);
-    lv_obj_set_width(ui_MenuCalicon, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuCalicon, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_align(ui_MenuCalicon, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_MenuCalicon, "");
-    lv_obj_set_style_text_font(ui_MenuCalicon, &ui_font_iconfont30, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuCalLabel = lv_label_create(ui_MenuCalPanel);
-    lv_obj_set_width(ui_MenuCalLabel, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuCalLabel, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuCalLabel, 60);
-    lv_obj_set_y(ui_MenuCalLabel, 0);
-    lv_obj_set_align(ui_MenuCalLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_MenuCalLabel, "日 历");
-    lv_obj_set_style_text_font(ui_MenuCalLabel, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuComPanel = lv_obj_create(ui_MenuPage);
-    lv_obj_set_width(ui_MenuComPanel, 240);
-    lv_obj_set_height(ui_MenuComPanel, 70);
-    lv_obj_set_x(ui_MenuComPanel, 0);
-    lv_obj_set_y(ui_MenuComPanel, 70);
-    lv_obj_set_align(ui_MenuComPanel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_MenuComPanel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuComPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuComPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuComPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_MenuComPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_MenuComPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuComPanel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(ui_MenuComPanel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
-
-    ui_MenuComButton = lv_btn_create(ui_MenuComPanel);
-    lv_obj_set_width(ui_MenuComButton, 40);
-    lv_obj_set_height(ui_MenuComButton, 40);
-    lv_obj_set_align(ui_MenuComButton, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_MenuComButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);                      /// Flags
-    lv_obj_clear_flag(ui_MenuComButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuComButton, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuComButton, lv_color_hex(0xC86400), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuComButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuComicon = lv_label_create(ui_MenuComButton);
-    lv_obj_set_width(ui_MenuComicon, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuComicon, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_align(ui_MenuComicon, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_MenuComicon, "");
-    lv_obj_set_style_text_font(ui_MenuComicon, &ui_font_iconfont28, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuComLabel = lv_label_create(ui_MenuComPanel);
-    lv_obj_set_width(ui_MenuComLabel, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuComLabel, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuComLabel, 60);
-    lv_obj_set_y(ui_MenuComLabel, 0);
-    lv_obj_set_align(ui_MenuComLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_MenuComLabel, "计 算 器");
-    lv_obj_set_style_text_font(ui_MenuComLabel, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuTimPanel = lv_obj_create(ui_MenuPage);
-    lv_obj_set_width(ui_MenuTimPanel, 240);
-    lv_obj_set_height(ui_MenuTimPanel, 70);
-    lv_obj_set_x(ui_MenuTimPanel, 0);
-    lv_obj_set_y(ui_MenuTimPanel, 140);
-    lv_obj_set_align(ui_MenuTimPanel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_MenuTimPanel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuTimPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuTimPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuTimPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_MenuTimPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_MenuTimPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuTimPanel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(ui_MenuTimPanel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
-
-    ui_MenuTimButton = lv_btn_create(ui_MenuTimPanel);
-    lv_obj_set_width(ui_MenuTimButton, 40);
-    lv_obj_set_height(ui_MenuTimButton, 40);
-    lv_obj_set_align(ui_MenuTimButton, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_MenuTimButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);                      /// Flags
-    lv_obj_clear_flag(ui_MenuTimButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuTimButton, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuTimButton, lv_color_hex(0xDC80E6), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuTimButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuTimicon = lv_label_create(ui_MenuTimButton);
-    lv_obj_set_width(ui_MenuTimicon, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuTimicon, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_align(ui_MenuTimicon, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_MenuTimicon, "");
-    lv_obj_set_style_text_font(ui_MenuTimicon, &ui_font_iconfont34, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuTimLabel = lv_label_create(ui_MenuTimPanel);
-    lv_obj_set_width(ui_MenuTimLabel, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuTimLabel, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuTimLabel, 60);
-    lv_obj_set_y(ui_MenuTimLabel, 0);
-    lv_obj_set_align(ui_MenuTimLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_MenuTimLabel, "秒 表");
-    lv_obj_set_style_text_font(ui_MenuTimLabel, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuCardPanel = lv_obj_create(ui_MenuPage);
-    lv_obj_set_width(ui_MenuCardPanel, 240);
-    lv_obj_set_height(ui_MenuCardPanel, 70);
-    lv_obj_set_x(ui_MenuCardPanel, 0);
-    lv_obj_set_y(ui_MenuCardPanel, 210);
-    lv_obj_set_align(ui_MenuCardPanel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_MenuCardPanel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuCardPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuCardPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuCardPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_MenuCardPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_MenuCardPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuCardPanel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(ui_MenuCardPanel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
-
-    ui_MenuCardButton = lv_btn_create(ui_MenuCardPanel);
-    lv_obj_set_width(ui_MenuCardButton, 40);
-    lv_obj_set_height(ui_MenuCardButton, 40);
-    lv_obj_set_align(ui_MenuCardButton, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_MenuCardButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);                      /// Flags
-    lv_obj_clear_flag(ui_MenuCardButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuCardButton, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuCardButton, lv_color_hex(0x80641E), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuCardButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuCardicon = lv_label_create(ui_MenuCardButton);
-    lv_obj_set_width(ui_MenuCardicon, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuCardicon, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_align(ui_MenuCardicon, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_MenuCardicon, "");
-    lv_obj_set_style_text_font(ui_MenuCardicon, &ui_font_iconfont32, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuCardLabel = lv_label_create(ui_MenuCardPanel);
-    lv_obj_set_width(ui_MenuCardLabel, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuCardLabel, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuCardLabel, 60);
-    lv_obj_set_y(ui_MenuCardLabel, 0);
-    lv_obj_set_align(ui_MenuCardLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_MenuCardLabel, "卡 包");
-    lv_obj_set_style_text_font(ui_MenuCardLabel, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuSprPanel = lv_obj_create(ui_MenuPage);
-    lv_obj_set_width(ui_MenuSprPanel, 240);
-    lv_obj_set_height(ui_MenuSprPanel, 70);
-    lv_obj_set_x(ui_MenuSprPanel, 0);
-    lv_obj_set_y(ui_MenuSprPanel, 280);
-    lv_obj_set_align(ui_MenuSprPanel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_MenuSprPanel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuSprPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuSprPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuSprPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_MenuSprPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_MenuSprPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuSprPanel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(ui_MenuSprPanel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
-
-    ui_MenuSprButton = lv_btn_create(ui_MenuSprPanel);
-    lv_obj_set_width(ui_MenuSprButton, 40);
-    lv_obj_set_height(ui_MenuSprButton, 40);
-    lv_obj_set_align(ui_MenuSprButton, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_MenuSprButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);                      /// Flags
-    lv_obj_clear_flag(ui_MenuSprButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuSprButton, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuSprButton, lv_color_hex(0x009680), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuSprButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuSpricon = lv_label_create(ui_MenuSprButton);
-    lv_obj_set_width(ui_MenuSpricon, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuSpricon, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_align(ui_MenuSpricon, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_MenuSpricon, "");
-    lv_obj_set_style_text_font(ui_MenuSpricon, &ui_font_iconfont30, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuSprLabel = lv_label_create(ui_MenuSprPanel);
-    lv_obj_set_width(ui_MenuSprLabel, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuSprLabel, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuSprLabel, 60);
-    lv_obj_set_y(ui_MenuSprLabel, 0);
-    lv_obj_set_align(ui_MenuSprLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_MenuSprLabel, "运 动");
-    lv_obj_set_style_text_font(ui_MenuSprLabel, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuHRPanel = lv_obj_create(ui_MenuPage);
-    lv_obj_set_width(ui_MenuHRPanel, 240);
-    lv_obj_set_height(ui_MenuHRPanel, 70);
-    lv_obj_set_x(ui_MenuHRPanel, 0);
-    lv_obj_set_y(ui_MenuHRPanel, 350);
-    lv_obj_set_align(ui_MenuHRPanel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_MenuHRPanel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuHRPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuHRPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuHRPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_MenuHRPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_MenuHRPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuHRPanel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(ui_MenuHRPanel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
-
-    ui_MenuHRButton = lv_btn_create(ui_MenuHRPanel);
-    lv_obj_set_width(ui_MenuHRButton, 40);
-    lv_obj_set_height(ui_MenuHRButton, 40);
-    lv_obj_set_align(ui_MenuHRButton, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_MenuHRButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);                      /// Flags
-    lv_obj_clear_flag(ui_MenuHRButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuHRButton, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuHRButton, lv_color_hex(0xC80000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuHRButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuHRicon = lv_label_create(ui_MenuHRButton);
-    lv_obj_set_width(ui_MenuHRicon, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuHRicon, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_align(ui_MenuHRicon, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_MenuHRicon, "");
-    lv_obj_set_style_text_font(ui_MenuHRicon, &ui_font_iconfont34, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuHRLabel = lv_label_create(ui_MenuHRPanel);
-    lv_obj_set_width(ui_MenuHRLabel, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuHRLabel, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuHRLabel, 60);
-    lv_obj_set_y(ui_MenuHRLabel, 0);
-    lv_obj_set_align(ui_MenuHRLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_MenuHRLabel, "心 率");
-    lv_obj_set_style_text_font(ui_MenuHRLabel, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuO2Panel = lv_obj_create(ui_MenuPage);
-    lv_obj_set_width(ui_MenuO2Panel, 240);
-    lv_obj_set_height(ui_MenuO2Panel, 70);
-    lv_obj_set_x(ui_MenuO2Panel, 0);
-    lv_obj_set_y(ui_MenuO2Panel, 420);
-    lv_obj_set_align(ui_MenuO2Panel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_MenuO2Panel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuO2Panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuO2Panel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuO2Panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_MenuO2Panel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_MenuO2Panel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuO2Panel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(ui_MenuO2Panel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
-
-    ui_MenuO2Button = lv_btn_create(ui_MenuO2Panel);
-    lv_obj_set_width(ui_MenuO2Button, 40);
-    lv_obj_set_height(ui_MenuO2Button, 40);
-    lv_obj_set_align(ui_MenuO2Button, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_MenuO2Button, LV_OBJ_FLAG_SCROLL_ON_FOCUS);                      /// Flags
-    lv_obj_clear_flag(ui_MenuO2Button, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuO2Button, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuO2Button, lv_color_hex(0x0080FF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuO2Button, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuO2icon = lv_label_create(ui_MenuO2Button);
-    lv_obj_set_width(ui_MenuO2icon, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuO2icon, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuO2icon, 2);
-    lv_obj_set_y(ui_MenuO2icon, 0);
-    lv_obj_set_align(ui_MenuO2icon, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_MenuO2icon, "");
-    lv_obj_set_style_text_font(ui_MenuO2icon, &ui_font_iconfont34, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuO2Label = lv_label_create(ui_MenuO2Panel);
-    lv_obj_set_width(ui_MenuO2Label, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuO2Label, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuO2Label, 60);
-    lv_obj_set_y(ui_MenuO2Label, 0);
-    lv_obj_set_align(ui_MenuO2Label, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_MenuO2Label, "血 氧");
-    lv_obj_set_style_text_font(ui_MenuO2Label, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuEnvPanel = lv_obj_create(ui_MenuPage);
-    lv_obj_set_width(ui_MenuEnvPanel, 240);
-    lv_obj_set_height(ui_MenuEnvPanel, 70);
-    lv_obj_set_x(ui_MenuEnvPanel, 0);
-    lv_obj_set_y(ui_MenuEnvPanel, 490);
-    lv_obj_set_align(ui_MenuEnvPanel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_MenuEnvPanel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuEnvPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuEnvPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuEnvPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_MenuEnvPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_MenuEnvPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuEnvPanel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(ui_MenuEnvPanel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
-
-    ui_MenuEnvButton = lv_btn_create(ui_MenuEnvPanel);
-    lv_obj_set_width(ui_MenuEnvButton, 40);
-    lv_obj_set_height(ui_MenuEnvButton, 40);
-    lv_obj_set_align(ui_MenuEnvButton, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_MenuEnvButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);                      /// Flags
-    lv_obj_clear_flag(ui_MenuEnvButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuEnvButton, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuEnvButton, lv_color_hex(0x009632), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuEnvButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuEnvicon = lv_label_create(ui_MenuEnvButton);
-    lv_obj_set_width(ui_MenuEnvicon, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuEnvicon, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_align(ui_MenuEnvicon, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_MenuEnvicon, "");
-    lv_obj_set_style_text_font(ui_MenuEnvicon, &ui_font_iconfont34, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuEnvLabel = lv_label_create(ui_MenuEnvPanel);
-    lv_obj_set_width(ui_MenuEnvLabel, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuEnvLabel, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuEnvLabel, 60);
-    lv_obj_set_y(ui_MenuEnvLabel, 0);
-    lv_obj_set_align(ui_MenuEnvLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_MenuEnvLabel, "环 境");
-    lv_obj_set_style_text_font(ui_MenuEnvLabel, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuCPPanel = lv_obj_create(ui_MenuPage);
-    lv_obj_set_width(ui_MenuCPPanel, 240);
-    lv_obj_set_height(ui_MenuCPPanel, 70);
-    lv_obj_set_x(ui_MenuCPPanel, 0);
-    lv_obj_set_y(ui_MenuCPPanel, 560);
-    lv_obj_set_align(ui_MenuCPPanel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_MenuCPPanel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuCPPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuCPPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuCPPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_MenuCPPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_MenuCPPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuCPPanel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(ui_MenuCPPanel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
-
-    ui_MenuCPButton = lv_btn_create(ui_MenuCPPanel);
-    lv_obj_set_width(ui_MenuCPButton, 40);
-    lv_obj_set_height(ui_MenuCPButton, 40);
-    lv_obj_set_align(ui_MenuCPButton, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_MenuCPButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);                      /// Flags
-    lv_obj_clear_flag(ui_MenuCPButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuCPButton, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuCPButton, lv_color_hex(0x800080), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuCPButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuCPicon = lv_label_create(ui_MenuCPButton);
-    lv_obj_set_width(ui_MenuCPicon, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuCPicon, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_align(ui_MenuCPicon, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_MenuCPicon, "");
-    lv_obj_set_style_text_font(ui_MenuCPicon, &ui_font_iconfont34, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuCPLabel = lv_label_create(ui_MenuCPPanel);
-    lv_obj_set_width(ui_MenuCPLabel, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuCPLabel, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuCPLabel, 60);
-    lv_obj_set_y(ui_MenuCPLabel, 0);
-    lv_obj_set_align(ui_MenuCPLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_MenuCPLabel, "指 南 针");
-    lv_obj_set_style_text_font(ui_MenuCPLabel, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuGamePanel = lv_obj_create(ui_MenuPage);
-    lv_obj_set_width(ui_MenuGamePanel, 240);
-    lv_obj_set_height(ui_MenuGamePanel, 70);
-    lv_obj_set_x(ui_MenuGamePanel, 0);
-    lv_obj_set_y(ui_MenuGamePanel, 630);
-    lv_obj_set_align(ui_MenuGamePanel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_MenuGamePanel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuGamePanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuGamePanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuGamePanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_MenuGamePanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_MenuGamePanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuGamePanel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(ui_MenuGamePanel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
-
-    ui_MenuGameButton = lv_btn_create(ui_MenuGamePanel);
-    lv_obj_set_width(ui_MenuGameButton, 40);
-    lv_obj_set_height(ui_MenuGameButton, 40);
-    lv_obj_set_align(ui_MenuGameButton, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_MenuGameButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);                      /// Flags
-    lv_obj_clear_flag(ui_MenuGameButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuGameButton, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuGameButton, lv_color_hex(0xC07010), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuGameButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuGameicon = lv_label_create(ui_MenuGameButton);
-    lv_obj_set_width(ui_MenuGameicon, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuGameicon, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_align(ui_MenuGameicon, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_MenuGameicon, "");
-    lv_obj_set_style_text_font(ui_MenuGameicon, &ui_font_iconfont30, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuGameLabel = lv_label_create(ui_MenuGamePanel);
-    lv_obj_set_width(ui_MenuGameLabel, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuGameLabel, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuGameLabel, 60);
-    lv_obj_set_y(ui_MenuGameLabel, 0);
-    lv_obj_set_align(ui_MenuGameLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_MenuGameLabel, "游 戏");
-    lv_obj_set_style_text_font(ui_MenuGameLabel, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuSetPanel = lv_obj_create(ui_MenuPage);
-    lv_obj_set_width(ui_MenuSetPanel, 240);
-    lv_obj_set_height(ui_MenuSetPanel, 70);
-    lv_obj_set_x(ui_MenuSetPanel, 0);
-    lv_obj_set_y(ui_MenuSetPanel, 700);
-    lv_obj_set_align(ui_MenuSetPanel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_MenuSetPanel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuSetPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuSetPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuSetPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_MenuSetPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_MenuSetPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuSetPanel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(ui_MenuSetPanel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
-
-    ui_MenuSetButton = lv_btn_create(ui_MenuSetPanel);
-    lv_obj_set_width(ui_MenuSetButton, 40);
-    lv_obj_set_height(ui_MenuSetButton, 40);
-    lv_obj_set_align(ui_MenuSetButton, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_MenuSetButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);                      /// Flags
-    lv_obj_clear_flag(ui_MenuSetButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuSetButton, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuSetButton, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuSetButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuSeticon = lv_label_create(ui_MenuSetButton);
-    lv_obj_set_width(ui_MenuSeticon, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuSeticon, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_align(ui_MenuSeticon, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_MenuSeticon, "");
-    lv_obj_set_style_text_font(ui_MenuSeticon, &ui_font_iconfont30, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuSetLabel = lv_label_create(ui_MenuSetPanel);
-    lv_obj_set_width(ui_MenuSetLabel, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuSetLabel, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuSetLabel, 60);
-    lv_obj_set_y(ui_MenuSetLabel, 0);
-    lv_obj_set_align(ui_MenuSetLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_MenuSetLabel, "设 置");
-    lv_obj_set_style_text_font(ui_MenuSetLabel, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuAbPanel = lv_obj_create(ui_MenuPage);
-    lv_obj_set_width(ui_MenuAbPanel, 240);
-    lv_obj_set_height(ui_MenuAbPanel, 70);
-    lv_obj_set_x(ui_MenuAbPanel, 0);
-    lv_obj_set_y(ui_MenuAbPanel, 770);
-    lv_obj_set_align(ui_MenuAbPanel, LV_ALIGN_TOP_MID);
-    lv_obj_clear_flag(ui_MenuAbPanel, LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuAbPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuAbPanel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuAbPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_color(ui_MenuAbPanel, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_border_opa(ui_MenuAbPanel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuAbPanel, lv_color_hex(0x808080), LV_PART_MAIN | LV_STATE_PRESSED);
-    lv_obj_set_style_bg_opa(ui_MenuAbPanel, 100, LV_PART_MAIN | LV_STATE_PRESSED);
-
-    ui_MenuAbButton = lv_btn_create(ui_MenuAbPanel);
-    lv_obj_set_width(ui_MenuAbButton, 40);
-    lv_obj_set_height(ui_MenuAbButton, 40);
-    lv_obj_set_align(ui_MenuAbButton, LV_ALIGN_LEFT_MID);
-    lv_obj_add_flag(ui_MenuAbButton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);                      /// Flags
-    lv_obj_clear_flag(ui_MenuAbButton, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE); /// Flags
-    lv_obj_set_style_radius(ui_MenuAbButton, 40, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(ui_MenuAbButton, lv_color_hex(0x646464), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_opa(ui_MenuAbButton, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuAbicon = lv_label_create(ui_MenuAbButton);
-    lv_obj_set_width(ui_MenuAbicon, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuAbicon, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_align(ui_MenuAbicon, LV_ALIGN_CENTER);
-    lv_label_set_text(ui_MenuAbicon, "");
-    lv_obj_set_style_text_font(ui_MenuAbicon, &ui_font_iconfont30, LV_PART_MAIN | LV_STATE_DEFAULT);
-
-    ui_MenuAbLabel = lv_label_create(ui_MenuAbPanel);
-    lv_obj_set_width(ui_MenuAbLabel, LV_SIZE_CONTENT);  /// 1
-    lv_obj_set_height(ui_MenuAbLabel, LV_SIZE_CONTENT); /// 1
-    lv_obj_set_x(ui_MenuAbLabel, 60);
-    lv_obj_set_y(ui_MenuAbLabel, 0);
-    lv_obj_set_align(ui_MenuAbLabel, LV_ALIGN_LEFT_MID);
-    lv_label_set_text(ui_MenuAbLabel, "关 于");
-    lv_obj_set_style_text_font(ui_MenuAbLabel, &ui_font_Cuyuan20, LV_PART_MAIN | LV_STATE_DEFAULT);
+    // 初始化所有菜单项
+    for (int i = 0; i < MENU_ITEMS_COUNT ; i++)
+    {
+        init_menu_item(&menu_items[i], ui_MenuPage, i * 70); // 动态计算 y_offset
+    }
 
     // scroll back
     lv_obj_scroll_to(ui_MenuPage, 0, ui_MenuScrollY, LV_ANIM_OFF);
@@ -1019,31 +615,6 @@ void ui_MenuPage_screen_init(void)
 
     // events
     lv_obj_add_event_cb(ui_MenuPage, ui_event_MenuPage, LV_EVENT_ALL, NULL);
-
-    lv_obj_t *panels[] = {
-        ui_MenuCalPanel, ui_MenuComPanel, ui_MenuTimPanel, ui_MenuCardPanel,
-        ui_MenuSprPanel, ui_MenuHRPanel, ui_MenuO2Panel, ui_MenuEnvPanel,
-        ui_MenuCPPanel, ui_MenuGamePanel, ui_MenuSetPanel, ui_MenuAbPanel};
-
-    for (size_t i = 0; i < sizeof(panels) / sizeof(panels[0]); i++)
-    {
-        lv_obj_add_event_cb(panels[i], drag_event_handler_, LV_EVENT_LONG_PRESSED, NULL);
-        lv_obj_add_event_cb(panels[i], drag_event_handler_, LV_EVENT_PRESSING, NULL);
-        lv_obj_add_event_cb(panels[i], drag_event_handler_, LV_EVENT_RELEASED, NULL);
-    }
-
-    lv_obj_add_event_cb(ui_MenuCalPanel, ui_event_MenuCalPanel, LV_EVENT_SHORT_CLICKED, NULL);
-    lv_obj_add_event_cb(ui_MenuComPanel, ui_event_MenuComPanel, LV_EVENT_SHORT_CLICKED, NULL);
-    lv_obj_add_event_cb(ui_MenuTimPanel, ui_event_MenuTimPanel, LV_EVENT_SHORT_CLICKED, NULL);
-    lv_obj_add_event_cb(ui_MenuCardPanel, ui_event_MenuCardPanel, LV_EVENT_SHORT_CLICKED, NULL);
-    lv_obj_add_event_cb(ui_MenuSprPanel, ui_event_MenuSprPanel, LV_EVENT_SHORT_CLICKED, NULL);
-    lv_obj_add_event_cb(ui_MenuHRPanel, ui_event_MenuHRPanel, LV_EVENT_SHORT_CLICKED, NULL);
-    lv_obj_add_event_cb(ui_MenuO2Panel, ui_event_MenuO2Panel, LV_EVENT_SHORT_CLICKED, NULL);
-    lv_obj_add_event_cb(ui_MenuEnvPanel, ui_event_MenuEnvPanel, LV_EVENT_SHORT_CLICKED, NULL);
-    lv_obj_add_event_cb(ui_MenuCPPanel, ui_event_MenuCPPanel, LV_EVENT_SHORT_CLICKED, NULL);
-    lv_obj_add_event_cb(ui_MenuGamePanel, ui_event_MenuGamePanel, LV_EVENT_SHORT_CLICKED, NULL);
-    lv_obj_add_event_cb(ui_MenuSetPanel, ui_event_MenuSetPanel, LV_EVENT_SHORT_CLICKED, NULL);
-    lv_obj_add_event_cb(ui_MenuAbPanel, ui_event_MenuAbPanel, LV_EVENT_SHORT_CLICKED, NULL);
 }
 
 /////////////////// SCREEN deinit ////////////////////

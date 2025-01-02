@@ -39,6 +39,19 @@
         "lv_obj_style.h": "c",
         "ui_aboutpage.h": "c",
         "system_error": "c",
-        "ui_spo2page.h": "c"
+        "ui_spo2page.h": "c",
+        "ui_megboxes.h": "c",
+        "ui_timerpage.h": "c",
+        "ui_calendarpage.h": "c",
+        "ui_computerpage.h": "c",
+        "ui_nfccardpage.h": "c",
+        "ui_hrpage.h": "c",
+        "ui_compasspage.h": "c",
+        "ui_gameselectpage.h": "c",
+        "ui_envpage.h": "c",
+        "algorithm": "c",
+        "__bit_reference": "c",
+        "bitset": "c",
+        "unordered_map": "c"
     }
 }
