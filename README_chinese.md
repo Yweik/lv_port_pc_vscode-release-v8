@@ -11,7 +11,7 @@
 - **自动滚动**：当拖拽到屏幕边缘时，菜单会自动滚动以显示更多内容。
 - **悬停交换**：当拖拽的菜单项悬停在另一个菜单项上超过一定时间时，两者会自动交换位置。
 - **动画效果**：菜单项的交换和复位过程均带有平滑的动画效果。
-![Uploading 无标题视频——使用Clipchamp制作.gif…]()
+![image](https://github.com/Yweik/lv_port_pc_vscode-release-v8/blob/main/%E6%97%A0%E6%A0%87%E9%A2%98%E8%A7%86%E9%A2%91%E2%80%94%E2%80%94%E4%BD%BF%E7%94%A8Clipchamp%E5%88%B6%E4%BD%9C.gif)
 ### 实现细节
 该功能通过 `lvgl` 的事件系统实现，主要逻辑在 `drag_event_handler_` 函数中处理。以下是关键实现点：
 - **长按事件 (`LV_EVENT_LONG_PRESSED`)**：触发拖拽状态，放大当前菜单项并缩小其他菜单项。
