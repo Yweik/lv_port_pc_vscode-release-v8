@@ -301,9 +301,8 @@ static void drag_event_handler_(lv_event_t *e)
 
                     for (int i = src_idx; i > dst_idx; i--)
                     {
-                        menu_items[i] = menu_items[i-1];
-                        animate_menu_item(menu_items[i-1].panel, lv_obj_get_y(menu_items[i-1].panel), lv_obj_get_y(menu_items[i-1].panel) + ITEM_HEIGHT);
-
+                        menu_items[i] = menu_items[i - 1];
+                        animate_menu_item(menu_items[i - 1].panel, lv_obj_get_y(menu_items[i - 1].panel), lv_obj_get_y(menu_items[i - 1].panel) + ITEM_HEIGHT);
                     }
                     menu_items[dst_idx] = drag_obj;
                     src_idx = dst_idx;
@@ -312,10 +311,10 @@ static void drag_event_handler_(lv_event_t *e)
                 else if (src_idx < dst_idx)
                 {
 
-                     for (int i = src_idx; i < dst_idx; i++)
+                    for (int i = src_idx; i < dst_idx; i++)
                     {
-                        menu_items[i] = menu_items[i+1];
-                        animate_menu_item(menu_items[i+1].panel, lv_obj_get_y(menu_items[i+1].panel), lv_obj_get_y(menu_items[i+1].panel) - ITEM_HEIGHT);
+                        menu_items[i] = menu_items[i + 1];
+                        animate_menu_item(menu_items[i + 1].panel, lv_obj_get_y(menu_items[i + 1].panel), lv_obj_get_y(menu_items[i + 1].panel) - ITEM_HEIGHT);
                     }
                     menu_items[dst_idx] = drag_obj;
                     src_idx = dst_idx;
@@ -338,23 +337,20 @@ static void drag_event_handler_(lv_event_t *e)
         {
             if (menu_items[i].panel != NULL)
             {
+                if (menu_items[i].panel == drag_obj.panel)
+                {
+                    lv_anim_t a;
+                    lv_anim_init(&a);
+                    lv_anim_set_var(&a, menu_items[i].panel);
+                    lv_anim_set_exec_cb(&a, (lv_anim_exec_xcb_t)lv_obj_set_y);
+                    lv_anim_set_values(&a, lv_obj_get_y(menu_items[i].panel), i * ITEM_HEIGHT);
+                    lv_anim_set_time(&a, 300);
+                    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+                    lv_anim_start(&a);
+                    lv_obj_set_x(menu_items[i].panel, 0);
+                    lv_obj_move_to_index(menu_items[i].panel, i);
+                }
                 lv_obj_set_size(menu_items[i].panel, ITEM_WIDTH, ITEM_HEIGHT);
-            }
-        }
-        for (uint32_t i = 0; i < MENU_ITEMS_COUNT; i++)
-        {
-            if (menu_items[i].panel != NULL)
-            {
-                lv_anim_t a;
-                lv_anim_init(&a);
-                lv_anim_set_var(&a, menu_items[i].panel);
-                lv_anim_set_exec_cb(&a, (lv_anim_exec_xcb_t)lv_obj_set_y);
-                lv_anim_set_values(&a, lv_obj_get_y(menu_items[i].panel), i * ITEM_HEIGHT);
-                lv_anim_set_time(&a, 300);
-                lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
-                lv_anim_start(&a);
-                lv_obj_set_x(menu_items[i].panel, 0);
-                lv_obj_move_to_index(menu_items[i].panel, i);
             }
         }
         // 重置状态
@@ -592,8 +588,7 @@ MenuItem menu_items[] = {
      .icon_text = "",
      .label_text = "关 于",
      .icon_font = &ui_font_iconfont30,
-     .event_cb = ui_event_MenuAbPanel}
-     };
+     .event_cb = ui_event_MenuAbPanel}};
 
 ///////////////////// SCREEN init ////////////////////
 void ui_MenuPage_screen_init(void)
@@ -604,7 +599,7 @@ void ui_MenuPage_screen_init(void)
     // lv_scr_load_anim(ui_MenuPage, LV_SCR_LOAD_ANIM_NONE, 0, 0, false);
 
     // 初始化所有菜单项
-    for (int i = 0; i < MENU_ITEMS_COUNT ; i++)
+    for (int i = 0; i < MENU_ITEMS_COUNT; i++)
     {
         init_menu_item(&menu_items[i], ui_MenuPage, i * 70); // 动态计算 y_offset
     }
